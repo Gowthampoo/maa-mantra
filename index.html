@@ -34,10 +34,25 @@
         window.addEventListener('load', function () {
           setTimeout(function () {
             var vw = window.innerWidth;
+
+            function isClipped(el) {
+              var node = el.parentElement;
+              while (node && node !== document.body) {
+                var cs = getComputedStyle(node);
+                if (cs.overflowX === 'hidden' || cs.overflowX === 'clip' || cs.overflowX === 'scroll' || cs.overflowX === 'auto') {
+                  var r = node.getBoundingClientRect();
+                  // only counts as "clipped" if the clipping box itself is on-screen
+                  if (r.left > -2 && r.right < vw + 2) return true;
+                }
+                node = node.parentElement;
+              }
+              return false;
+            }
+
             var offenders = [];
-            document.querySelectorAll('*').forEach(function (el) {
+            document.querySelectorAll('body *').forEach(function (el) {
               var r = el.getBoundingClientRect();
-              if (r.right > vw + 2 || r.left < -2) {
+              if ((r.right > vw + 2 || r.left < -2) && !isClipped(el)) {
                 offenders.push({
                   tag: el.tagName,
                   cls: (el.className && el.className.toString) ? el.className.toString().slice(0, 50) : '',
@@ -50,11 +65,13 @@
             offenders.sort(function (a, b) { return b.right - a.right; });
             var box = document.createElement('div');
             box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#fff;color:#000;font:12px monospace;padding:10px;max-height:60vh;overflow:auto;white-space:pre-wrap;border-bottom:4px solid red;';
-            var lines = 'viewport width: ' + vw + '\n\n' + (offenders.length
+            var lines = 'viewport width: ' + vw
+              + '\ndocument scrollWidth: ' + document.documentElement.scrollWidth
+              + '\n\n' + (offenders.length
               ? offenders.slice(0, 10).map(function (o) {
                   return o.tag + '.' + o.cls + '\n  left:' + o.left + ' right:' + o.right + ' width:' + o.width;
                 }).join('\n\n')
-              : 'no overflowing elements found');
+              : 'no UNCLIPPED overflowing elements found — the wide elements are being clipped properly by an ancestor, so the leak (if any) is elsewhere, e.g. a scrollbar-width or negative-margin issue.');
             box.textContent = lines;
             document.body.appendChild(box);
           }, 1500);
