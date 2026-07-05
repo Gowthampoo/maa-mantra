@@ -27,5 +27,39 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // TEMPORARY DEBUG OVERLAY — remove once the mobile overflow bug is found.
+      // Visit the site with ?debug=1 appended to the URL to see it.
+      if (location.search.includes('debug')) {
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var vw = window.innerWidth;
+            var offenders = [];
+            document.querySelectorAll('*').forEach(function (el) {
+              var r = el.getBoundingClientRect();
+              if (r.right > vw + 2 || r.left < -2) {
+                offenders.push({
+                  tag: el.tagName,
+                  cls: (el.className && el.className.toString) ? el.className.toString().slice(0, 50) : '',
+                  left: Math.round(r.left),
+                  right: Math.round(r.right),
+                  width: Math.round(r.width),
+                });
+              }
+            });
+            offenders.sort(function (a, b) { return b.right - a.right; });
+            var box = document.createElement('div');
+            box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#fff;color:#000;font:12px monospace;padding:10px;max-height:60vh;overflow:auto;white-space:pre-wrap;border-bottom:4px solid red;';
+            var lines = 'viewport width: ' + vw + '\n\n' + (offenders.length
+              ? offenders.slice(0, 10).map(function (o) {
+                  return o.tag + '.' + o.cls + '\n  left:' + o.left + ' right:' + o.right + ' width:' + o.width;
+                }).join('\n\n')
+              : 'no overflowing elements found');
+            box.textContent = lines;
+            document.body.appendChild(box);
+          }, 1500);
+        });
+      }
+    </script>
   </body>
 </html>
